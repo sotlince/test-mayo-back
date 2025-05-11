@@ -1,0 +1,49 @@
+# Node modules (NO subir nunca)
+node_modules/
+
+# Variables de entorno
+.env
+
+# Archivos de logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache y cobertura
+.cache/
+coverage/
+nyc_output/
+
+# Archivos del sistema o del editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Output de tests
+test-output/
+
+# Archivos temporales o de ejecución
+*.pid
+*.seed
+*.tgz
+
+# Dist si transpilas (no aplica a Express puro, pero por si acaso)
+dist/
+build/
+
+# Logs de errores de PM2 o procesos de fondo
+pids/
+logs/
+*.pid
+*.gz
+
+# Archivos de subida temporales (si los llegas a usar)
+uploads/
+tmp/
+
+# Otros posibles directorios de prueba
+__tests__/
+*.test.js
+*.spec.js

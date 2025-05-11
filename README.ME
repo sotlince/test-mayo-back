@@ -1,0 +1,192 @@
+# 🏥 Sistema Web Inclusivo para Atención Médica
+### Backend API Felipe Andrés Parra Álvarez
+
+"Aplicación backend accesible para gestionar atención médica de pacientes con discapacidad visual y auditiva, utilizando una arquitectura modular y segura."
+
+Este repositorio contiene el backend de un sistema accesible para la atención de pacientes con discapacidad visual y auditiva en centros médicos. El sistema permite gestionar pacientes, citas, llamados y usuarios administrativos mediante una API REST construida con Node.js, Express y Supabase (PostgreSQL).
+
+---
+
+## ⚙️ Tecnologías Utilizadas
+
+- **Node.js + Express**: Framework principal del backend.
+- **Supabase**: Plataforma Backend-as-a-Service con PostgreSQL.
+- **JWT**: Manejo de autenticación y roles.
+- **UUID**: Identificación única de usuarios, pacientes y citas.
+- **Dotenv**: Manejo de variables de entorno.
+- **Middleware personalizado**: Autenticación por token y control de permisos por rol.
+
+---
+
+## 🧠 Arquitectura del Sistema
+
+```
+📦 backend_mvp/
+ ┣ 📂src/
+ ┃ ┣ 📂controllers/          # Lógica de cada módulo (pacientes, citas, auth, llamados, reportes, usuarios)
+ ┃ ┣ 📂routes/               # Archivos de rutas por módulo
+ ┃ ┣ 📂middleware/           # Autenticación con JWT y control de roles
+ ┃ ┣ 📂config/               # Conexión a Supabase (.env)
+ ┃ ┗ 📜app.js                # Configuración principal de Express
+ ┣ 📜server.js               # Entrada del backend (corre app.js)
+ ┣ 📜.env                    # Variables de entorno (secretos)
+ ┗ 📜README.md               # Este archivo
+```
+
+---
+
+## 🔐 Autenticación y Roles
+
+- Implementado con **JWT**: cada login genera un token con `id` y `rol`
+- Roles definidos: `Administrador`, `Médico`, `Secretaria`
+- Cada ruta protegida usa `verificarToken` y `permitirRoles(...)`
+
+---
+
+## 🗃️ Base de Datos - Supabase (PostgreSQL)
+
+### Tablas principales en 3FN:
+
+- `usuarios`: Datos del personal administrativo y médico (UUID, correo, rol, especialidad).
+- `pacientes`: Datos detallados del paciente, discapacidad, contacto de emergencia.
+- `citas`: Agendamiento médico con estado (`Agendada`, `Atendida`, `Cancelada`).
+- `llamados`: Historial y gestión del turno de atención (incluye prioridad y tipo de notificación).
+- `roles`: Tabla asociada a usuarios con nombre de rol.
+- `especialidades`: Especialidades médicas (opcional, para médicos).
+- `sintomas`: Reportes detallados de síntomas por paciente.
+
+🧩 Relaciones clave:
+- `citas.id_paciente` → `pacientes.id_paciente`
+- `citas.id_usuario` → `usuarios.id_usuario`
+- `llamados.id_usuario` → `usuarios.id_usuario`
+
+---
+
+## 🔁 Flujo de Datos
+
+```mermaid
+graph TD
+  Usuario[👤 Usuario] -->|Login| Auth[🔐 /auth/login]
+  Auth -->|Token| Panel[📋 Panel Administrativo]
+  Panel -->|GET| Pacientes[🩺 /api/pacientes]
+  Panel -->|POST| Citas[📆 /api/citas]
+  Panel -->|POST| Llamado[📣 /api/llamados/:id]
+  Supabase[(🛢️ Supabase PostgreSQL)] <-->|Consulta| Pacientes
+  Supabase <-->|Inserción| Citas
+  Supabase <-->|Actualización| Llamado
+```
+
+---
+
+## ✅ Endpoints disponibles (21)
+
+- Autenticación: login, registro, perfil
+- Pacientes: CRUD completo + filtros
+- Citas: CRUD completo + filtros
+- Llamados: creación, historial, actualización de estado, simulación temporal
+- Roles protegidos: cada ruta controla acceso con JWT + `permitirRoles(...)`
+
+---
+
+## 📌 Requisitos No Funcionales cumplidos
+
+- Modularidad
+- Escalabilidad (estructura limpia por componentes)
+- Preparado para HTTPS y bcrypt
+- Contraseñas hash (⚠️ pendiente para producción)
+- Tiempo de respuesta promedio < 1 segundo (test en local)
+- Protección por rol y token JWT para cada acción crítica
+
+---
+
+## 🧪 Testing y despliegue
+
+- Probado con **Thunder Client** y **Postman**
+- Backend listo para conectar con frontend en React o cualquier SPA
+- Supabase como backend persistente: alta disponibilidad + backups
+
+---
+
+## ✨ Autor
+
+Este backend desarrollado por **Felipe Andrés Parra Álvarez** permite gestionar pacientes, usuarios, citas, llamados y reportes médicos en un entorno accesible para personas con discapacidad visual y auditiva.
+
+---
+
+## 🔐 Autenticación (`/api/auth`)
+
+| Método | Endpoint             | Descripción                          |
+|--------|----------------------|--------------------------------------|
+| POST   | `/auth/login`        | Iniciar sesión y obtener token JWT   |
+| POST   | `/auth/register`     | Registrar nuevo usuario (solo admin) |
+| GET    | `/auth/profile`      | Obtener perfil del usuario logueado  |
+
+---
+
+## 👤 Usuarios (`/api/usuarios`)
+
+> Requiere token con rol `Administrador`
+
+| Método | Endpoint                   | Descripción                      |
+|--------|----------------------------|----------------------------------|
+| GET    | `/api/usuarios`            | Listar todos los usuarios        |
+| DELETE | `/api/usuarios/:id`        | Eliminar usuario por ID          |
+| PUT    | `/api/usuarios/:id/rol`    | Actualizar el rol de un usuario  |
+
+---
+
+## 🧑‍⚕️ Pacientes (`/api/pacientes`)
+
+| Método | Endpoint               | Descripción                               |
+|--------|------------------------|-------------------------------------------|
+| GET    | `/api/pacientes`       | Listar pacientes (público)                |
+| POST   | `/api/pacientes`       | Crear paciente (con validación de RUT)    |
+| GET    | `/api/pacientes/:id`   | Ver detalles (requiere token)             |
+| PUT    | `/api/pacientes/:id`   | Editar paciente (médico o admin)          |
+| DELETE | `/api/pacientes/:id`   | Eliminar paciente (solo admin)            |
+
+---
+
+## 📅 Citas (`/api/citas`)
+
+| Método | Endpoint            | Descripción                                     |
+|--------|---------------------|-------------------------------------------------|
+| GET    | `/api/citas`        | Listar citas (por rol)                          |
+| POST   | `/api/citas`        | Crear nueva cita                                |
+| GET    | `/api/citas/:id`    | Obtener cita por ID                             |
+| PUT    | `/api/citas/:id`    | Editar cita                                     |
+| DELETE | `/api/citas/:id`    | Cancelar cita (solo admin)                      |
+
+---
+
+## 📣 Llamados (`/api/llamados`)
+
+| Método   | Endpoint                  | Descripción
+|----------|---------------------------|----------------------------------------------------------------------|
+| GET      | /api/llamados             | Obtener los llamados activos (estado: Llamado) para mostrar en visor
+| GET      | /api/llamados/ordenados   | Obtener llamados pendientes ordenados por urgencia y hora de ingreso
+| POST     | /api/llamados/:pacienteId | Registrar nuevo llamado con estado Pendiente
+| PUT      | /api/llamados/:id         | Actualizar estado del llamado (Llamado, Atendido, Cancelado, etc.)
+| GET      | /api/llamados/historial   | Ver historial completo de llamados (solo Administrador)
+
+---
+
+## 📊 Reportes (`/api/reportes`)
+
+> Requieren token con rol `Administrador` o `Secretaria` según el caso
+
+| Método | Endpoint                                | Descripción                                      |
+|--------|-----------------------------------------|--------------------------------------------------|
+| GET    | `/api/reportes/citas-atendidas`         | Citas atendidas entre fechas (`?desde&hasta`)   |
+| GET    | `/api/reportes/citas-pendientes`        | Lista de citas agendadas                         |
+| GET    | `/api/reportes/llamados-por-prioridad`  | Llamados agrupados por prioridad                 |
+| GET    | `/api/reportes/usuarios-por-rol`        | Usuarios agrupados por rol (solo admin)         |
+
+---
+
+## 🛡️ Seguridad
+- Token JWT requerido en la mayoría de rutas protegidas
+- Middleware de roles: `permitirRoles()` según el contexto
+
+---
+
