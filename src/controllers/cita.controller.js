@@ -19,34 +19,81 @@ const obtenerCitas = async (req, res) => {
 // Este controlador debería recibir los datos de la cita desde el body de la petición
 const crearCita = async (req, res) => {
     try {
-        const creado_en = new Date();
-        const creado_por = req.usuario.id;
-        const { id_paciente, fecha_inicio, fecha_fin, motivo, tipo_cita } = req.body;
-        if (!id_paciente || !creado_por || !fecha_inicio || !fecha_fin || !tipo_cita) {
-            console.error('Faltan datos para crear la cita:', req.body);
-            return res.status(400).json({ ok: false, mensaje: 'Faltan datos para la cita' });
-        }
-        const { data, error } = await supabase
-            .from('citas')
-            .insert([{
-                id_paciente,
-                fecha_inicio,
-                fecha_fin,
-                motivo,
-                tipo_cita,
-                estado: 'Agendada',
-                creado_en,
-                creado_por,
-            }])
-            .select()
-            .single();
-        if (error) throw error;
-        res.status(201).json({ ok: true, mensaje: 'Cita registrada correctamente', cita: data });
+      const creado_en = new Date();
+      const creado_por = req.usuario.id;
+      const { id_paciente, fecha_inicio, fecha_fin, motivo, tipo_cita } = req.body;
+  
+      if (!id_paciente || !creado_por || !fecha_inicio || !fecha_fin || !tipo_cita) {
+        return res.status(400).json({ ok: false, mensaje: 'Faltan datos para la cita' });
+      }
+  
+      // Validar que la fecha de inicio sea anterior a la de fin
+      if (new Date(fecha_inicio) >= new Date(fecha_fin)) {
+        return res.status(400).json({ ok: false, mensaje: 'La fecha de inicio debe ser anterior a la fecha de fin.' });
+      }
+  
+      // 1. Obtener el RUT del paciente
+      const { data: pacienteData, error: errorPaciente } = await supabase
+        .from('pacientes')
+        .select('rut')
+        .eq('id_paciente', id_paciente)
+        .single();
+  
+      if (errorPaciente || !pacienteData) {
+        throw new Error('Paciente no encontrado');
+      }
+  
+      const rut = pacienteData.rut;
+  
+      // 2. Buscar otras citas con mismo RUT en ese horario
+      const { data: citasExistentes, error: errorConflicto } = await supabase
+        .from('citas')
+        .select(`
+          id_cita,
+          fecha_inicio,
+          fecha_fin,
+          paciente:pacientes ( rut )
+        `)
+        .gte('fecha_fin', fecha_inicio)
+        .lte('fecha_inicio', fecha_fin);
+  
+      if (errorConflicto) throw errorConflicto;
+  
+      const conflicto = citasExistentes.find(cita => cita.paciente?.rut === rut);
+  
+      if (conflicto) {
+        return res.status(409).json({
+          ok: false,
+          mensaje: 'Este paciente ya tiene una cita registrada en ese rango horario.'
+        });
+      }
+  
+      // 3. Insertar la nueva cita
+      const { data, error } = await supabase
+        .from('citas')
+        .insert([{
+          id_paciente,
+          fecha_inicio,
+          fecha_fin,
+          motivo,
+          tipo_cita,
+          estado: 'Agendada',
+          creado_en,
+          creado_por,
+        }])
+        .select()
+        .single();
+  
+      if (error) throw error;
+  
+      res.status(201).json({ ok: true, mensaje: 'Cita registrada correctamente', cita: data });
+  
     } catch (error) {
-        console.error('Error en crearCita:', error.message); // 👈 agrega esto
-        res.status(500).json({ ok: false, mensaje: 'Error al registrar cita' });
+      console.error('Error en crearCita:', error.message);
+      res.status(500).json({ ok: false, mensaje: 'Error al registrar cita' });
     }
-};
+  };
+  
 // Controlador para obtener una cita por ID
 // Este controlador debería recibir el ID de la cita desde los parámetros de la URL
 const obtenerCitaPorId = async (req, res) => {

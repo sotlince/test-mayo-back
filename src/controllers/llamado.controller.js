@@ -1,41 +1,104 @@
 const supabase = require('../config/supabase');
 // Simulación en memoria para llamados activos por 10 segundos
 // let llamadosActivos = [];
+// const llamarPaciente = async (req, res) => {
+//     const { pacienteId } = req.params;
+//     const { prioridad = 'Media', modo_notificacion = 'visual', id_usuario } = req.body;
+//     try {
+//         // Convertir prioridad textual a numérica
+//         const prioridadMap = {
+//             'Alta': 1,
+//             'Media': 2,
+//             'Baja': 3
+//         };
+//         const prioridad_numerica = prioridadMap[prioridad] || 2; // Por defecto: Media = 2
+//         // Insertar en la base de datos con estado inicial: Pendiente
+//         const { data, error } = await supabase
+//             .from('llamados')
+//             .insert([{
+//                 id_paciente: pacienteId,
+//                 id_usuario,
+//                 prioridad,
+//                 prioridad_numerica,
+//                 modo_notificacion,
+//                 estado: 'Pendiente'
+//             }])
+//             .select()
+//             .single();
+//         if (error) throw error;
+//         res.json({
+//             ok: true,
+//             mensaje: 'Paciente registrado correctamente como pendiente',
+//             llamado: data
+//         });
+//     } catch (error) {
+//         console.error('Error al registrar paciente:', error.message);
+//         res.status(500).json({ ok: false, mensaje: 'Error al registrar al paciente' });
+//     }
+// };
 const llamarPaciente = async (req, res) => {
     const { pacienteId } = req.params;
     const { prioridad = 'Media', modo_notificacion = 'visual', id_usuario } = req.body;
+  
     try {
-        // Convertir prioridad textual a numérica
-        const prioridadMap = {
-            'Alta': 1,
-            'Media': 2,
-            'Baja': 3
-        };
-        const prioridad_numerica = prioridadMap[prioridad] || 2; // Por defecto: Media = 2
-        // Insertar en la base de datos con estado inicial: Pendiente
-        const { data, error } = await supabase
-            .from('llamados')
-            .insert([{
-                id_paciente: pacienteId,
-                id_usuario,
-                prioridad,
-                prioridad_numerica,
-                modo_notificacion,
-                estado: 'Pendiente'
-            }])
-            .select()
-            .single();
-        if (error) throw error;
-        res.json({
-            ok: true,
-            mensaje: 'Paciente registrado correctamente como pendiente',
-            llamado: data
+      // 1️⃣ Verificar si ya existe un llamado hoy para este paciente
+      const inicioDia = new Date();
+      inicioDia.setHours(0, 0, 0, 0);
+  
+      const finDia = new Date(inicioDia);
+      finDia.setDate(finDia.getDate() + 1);
+  
+      const { data: duplicado, error: errorDup } = await supabase
+        .from('llamados')
+        .select('id_llamado')
+        .eq('id_paciente', pacienteId)
+        .gte('timestamp', inicioDia.toISOString())
+        .lt('timestamp', finDia.toISOString());
+  
+      if (errorDup) throw errorDup;
+  
+      if (duplicado.length > 0) {
+        return res.status(409).json({
+          ok: false,
+          mensaje: 'Ya existe un llamado registrado para este paciente hoy.'
         });
+      }
+  
+      // 2️⃣ Convertir prioridad textual a numérica
+      const prioridadMap = {
+        'Alta': 1,
+        'Media': 2,
+        'Baja': 3
+      };
+      const prioridad_numerica = prioridadMap[prioridad] || 2;
+  
+      // 3️⃣ Insertar en base de datos
+      const { data, error } = await supabase
+        .from('llamados')
+        .insert([{
+          id_paciente: pacienteId,
+          id_usuario,
+          prioridad,
+          prioridad_numerica,
+          modo_notificacion,
+          estado: 'Pendiente'
+        }])
+        .select()
+        .single();
+  
+      if (error) throw error;
+  
+      res.json({
+        ok: true,
+        mensaje: 'Paciente registrado correctamente como pendiente',
+        llamado: data
+      });
+  
     } catch (error) {
-        console.error('Error al registrar paciente:', error.message);
-        res.status(500).json({ ok: false, mensaje: 'Error al registrar al paciente' });
+      console.error('Error al registrar paciente:', error.message);
+      res.status(500).json({ ok: false, mensaje: 'Error al registrar al paciente' });
     }
-};
+  };
 // Controlador para actualizar el estado de un llamado
 // (solo para el administrador y secretaria)
 // Controlador para obtener los llamados activos
