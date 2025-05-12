@@ -5,9 +5,13 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-    origin: 'https://test-sistema-inclusivo.web.app',
-    credentials: true
+    origin: [
+      'https://test-sistema-inclusivo.web.app',           // mi frontend en Firebase
+      'https://backend-inclusivo-tesis.onrender.com'      // mi backend en Render 
+    ],
+    credentials: true // JWT en headers
   }));
+  
 app.use(express.json());
 
 // Rutas iniciales
